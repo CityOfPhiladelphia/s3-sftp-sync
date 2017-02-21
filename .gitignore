@@ -92,3 +92,6 @@ envs/
 # Mac
 .DS_Store
 ._*
+
+# Custom
+config-local.conf
