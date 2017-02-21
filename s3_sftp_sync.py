@@ -83,20 +83,24 @@ def main(config_file):
             if start_time == None or mtime >= start_time:
                 file = sftp.sftp_client.file(fname)
 
-                s3_hash = s3_md5(s3, bucket, key_prefix + fname)
+                if mtime == start_time:
+                    s3_hash = s3_md5(s3, bucket, key_prefix + fname)
 
-                if s3_hash != None:
-                    print('hashing sftp file')
-                    file_hash = file_md5(file)
-                    print('done hashing sftp file')
+                    # if s3 object doesn't exist, don't bother hashing sftp file
+                    if s3_hash != None:
+                        print('hashing sftp file')
+                        file_hash = file_md5(file)
+                        print('done hashing sftp file')
+                    else:
+                        file_hash = None
 
-                print(s3_hash)
-                print(type(s3_hash))
-                print(file_hash)
-                print(type(file_hash))
-                print(s3_hash == file_hash)
+                    print(s3_hash)
+                    print(type(s3_hash))
+                    print(file_hash)
+                    print(type(file_hash))
+                    print(s3_hash == file_hash)
 
-                if s3_hash == None or s3_hash != file_hash:
+                if mtime > start_time or s3_hash != file_hash:
                     print('Syncing {}'.format(fname))
 
                     s3.put_object(
