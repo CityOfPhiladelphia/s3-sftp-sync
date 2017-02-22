@@ -19,15 +19,15 @@ def get_logger(logging_config):
     try:
         fileConfig(logging_config)
     except:
-        FORMAT = '[%(asctime)-15s] %(levelname)s [%(name)s.%(funcName)s:%(lineno)d] %(message)s'
+        FORMAT = '[%(asctime)-15s] %(levelname)s [%(name)s] %(message)s'
         logging.basicConfig(format=FORMAT, level=logging.INFO)
 
-    def my_handler(type, value, tb):
-        logger.exception("Uncaught exception: {0}".format(str(value)))
+    def exception_handler(type, value, tb):
+        logger.exception("Uncaught exception: {}".format(str(value)), exc_info=(type, value, tb))
 
-    sys.excepthook = my_handler
+    sys.excepthook = exception_handler
 
-    return logging.getLogger()
+    return logging.getLogger('s3_sftp_sync')
 
 def file_md5(file):
     hash_md5 = hashlib.md5()
@@ -53,8 +53,8 @@ def s3_md5(s3, bucket, key):
     return None
 
 @click.command()
-@click.option('-c','--config-file', default='config.conf')
-@click.option('-c','--logging-config', default='logging_config.conf')
+@click.option('--config-file', default='config.conf')
+@click.option('--logging-config', default='logging_config.conf')
 def main(config_file, logging_config):
     global logger
 
@@ -90,6 +90,7 @@ def main(config_file, logging_config):
                 sys.exit(1)
 
     cnopts = pysftp.CnOpts()
+    cnopts.compression = True
 
     if 'verify_host_key' in config['sftp'] and config['sftp']['verify_host_key'].lower() == 'false':
         cnopts.hostkeys = None
@@ -122,13 +123,7 @@ def main(config_file, logging_config):
                     else:
                         file_hash = None
 
-                    print(s3_hash)
-                    print(type(s3_hash))
-                    print(file_hash)
-                    print(type(file_hash))
-                    print(s3_hash == file_hash)
-
-                if mtime > start_time or s3_hash != file_hash:
+                if start_time == None or mtime > start_time or s3_hash != file_hash:
                     logger.info('Syncing {} - {} mtime - {} bytes'.format(fname, mtime, size))
 
                     s3.put_object(
@@ -146,7 +141,8 @@ def main(config_file, logging_config):
             if 'incremental_sync' in config and (last_modified == None or mtime >= last_modified):
                 last_modified = mtime
 
-        if 'incremental_sync' in config and last_modified != None:
+        if 'incremental_sync' in config and last_modified != None and last_modified != start_time:
+            logger.info('Updating last_modified time {}'.format(last_modified))
             s3.put_object(
                 Bucket=bucket,
                 Key=config['incremental_sync']['last_modified_s3_key'],
