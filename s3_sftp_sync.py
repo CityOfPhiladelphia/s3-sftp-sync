@@ -111,32 +111,31 @@ def main(config_file, logging_config):
             size = stats.st_size
 
             if start_time == None or mtime >= start_time:
-                file = sftp.sftp_client.file(fname)
+                with sftp.sftp_client.file(fname) as file:
+                    if mtime == start_time:
+                        s3_hash = s3_md5(s3, bucket, key_prefix + fname)
 
-                if mtime == start_time:
-                    s3_hash = s3_md5(s3, bucket, key_prefix + fname)
+                        # if s3 object doesn't exist, don't bother hashing sftp file
+                        if s3_hash != None:
+                            logger.info('{} modified time equals start_time, hash checking file'.format(fname))
+                            file_hash = file_md5(file)
+                        else:
+                            file_hash = None
 
-                    # if s3 object doesn't exist, don't bother hashing sftp file
-                    if s3_hash != None:
-                        logger.info('{} modified time equals start_time, hash checking file'.format(fname))
-                        file_hash = file_md5(file)
-                    else:
-                        file_hash = None
+                    if start_time == None or mtime > start_time or s3_hash != file_hash:
+                        logger.info('Syncing {} - {} mtime - {} bytes'.format(fname, mtime, size))
 
-                if start_time == None or mtime > start_time or s3_hash != file_hash:
-                    logger.info('Syncing {} - {} mtime - {} bytes'.format(fname, mtime, size))
+                        s3.put_object(
+                            Bucket=bucket,
+                            Key=key_prefix + fname,
+                            Body=file,
+                            Metadata={
+                                'sftp_mtime': mtime,
+                                'sftp_sync_time': datetime.datetime.utcnow().isoformat()
+                            })
 
-                    s3.put_object(
-                        Bucket=bucket,
-                        Key=key_prefix + fname,
-                        Body=file,
-                        Metadata={
-                            'sftp_mtime': mtime,
-                            'sftp_sync_time': datetime.datetime.utcnow().isoformat()
-                        })
-
-                    num_files_synced += 1
-                    num_bytes_synced += size
+                        num_files_synced += 1
+                        num_bytes_synced += size
 
             if 'incremental_sync' in config and (last_modified == None or mtime >= last_modified):
                 last_modified = mtime
