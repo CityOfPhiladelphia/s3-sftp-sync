@@ -2,22 +2,28 @@
 
 Syncs files from a SFTP server to an S3 bucket.
 
+### Install:
+
+```sh
+pip install git+https://github.com/CityOfPhiladelphia/s3-sftp-sync.git
+```
+
 ### Usage:
 
 ```sh
-./s3_sftp_sync.py
+s3_sftp_sync
 ```
 
 ```sh
-./s3_sftp_sync.py --config-file /path/to/config.conf
+s3_sftp_sync --config-file /path/to/config.conf
 ```
 
 ```sh
-./s3_sftp_sync.py --logging-file /path/to/logging_config.conf
+s3_sftp_sync --logging-file /path/to/logging_config.conf
 ```
 
 ```sh
-./s3_sftp_sync.py --config-file /path/to/config.conf --logging-file /path/to/logging_config.conf
+s3_sftp_sync --config-file /path/to/config.conf --logging-file /path/to/logging_config.conf
 ```
 
 ### Configuration File

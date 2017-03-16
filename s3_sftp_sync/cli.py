@@ -1,12 +1,10 @@
-#!/usr/bin/env python3
-
 import sys
-import configparser
 import datetime
 import hashlib
 import logging
-from logging.config import fileConfig
+from logging.config import dictConfig
 
+import yaml
 import pysftp
 from pysftp.helpers import WTCallbacks
 import click
@@ -17,7 +15,9 @@ logger = None
 
 def get_logger(logging_config):
     try:
-        fileConfig(logging_config)
+        with open(logging_config) as file:
+            config = yaml.load(file)
+        dictConfig(config)
     except:
         FORMAT = '[%(asctime)-15s] %(levelname)s [%(name)s] %(message)s'
         logging.basicConfig(format=FORMAT, level=logging.INFO)
@@ -62,8 +62,8 @@ def main(config_file, logging_config):
 
     logger.info('Starting sync')
 
-    config = configparser.ConfigParser()
-    config.read(config_file)
+    with open(config_file) as file:
+        config = yaml.load(file)
 
     num_files_synced = 0
     num_bytes_synced = 0
@@ -71,9 +71,7 @@ def main(config_file, logging_config):
     start_time = None
     last_modified = None
 
-    s3 = boto3.client('s3',
-                      aws_access_key_id=config['s3']['aws_access_key_id'],
-                      aws_secret_access_key=config['s3']['aws_secret_access_key'])
+    s3 = boto3.client('s3')
     bucket = config['s3']['bucket']
     key_prefix = config['s3']['key_prefix']
 
@@ -92,7 +90,7 @@ def main(config_file, logging_config):
     cnopts = pysftp.CnOpts()
     cnopts.compression = True
 
-    if 'verify_host_key' in config['sftp'] and config['sftp']['verify_host_key'].lower() == 'false':
+    if 'verify_host_key' in config['sftp'] and config['sftp']['verify_host_key'] == False:
         cnopts.hostkeys = None
 
     with pysftp.Connection(config['sftp']['hostname'],
@@ -148,6 +146,3 @@ def main(config_file, logging_config):
                 Body=str(last_modified).encode('utf8'))
 
         logger.info('Synced {} files and {} bytes'.format(num_files_synced, num_bytes_synced))
-
-if __name__ == '__main__':
-        main()

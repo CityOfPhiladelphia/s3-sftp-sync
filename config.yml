@@ -1,0 +1,10 @@
+sftp:
+  hostname: secure-ftp.phila.gov
+  username: Opaproperty
+  password: foo
+  verify_host_key: false
+s3:
+  bucket: phl-data-dropbox
+  key_prefix: sftp
+incremental_sync:
+  last_modified_s3_key: sftp-sync-last-modified
