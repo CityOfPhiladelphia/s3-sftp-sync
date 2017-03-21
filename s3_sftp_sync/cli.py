@@ -1,4 +1,5 @@
 import sys
+import os
 import datetime
 import hashlib
 import logging
@@ -28,6 +29,35 @@ def get_logger(logging_config):
     sys.excepthook = exception_handler
 
     return logging.getLogger('s3_sftp_sync')
+
+def get_config(config_file):
+    try:
+        with open(config_file) as file:
+            config = yaml.load(file)
+    except:
+        config = {}
+
+    def safe_get(obj, key):
+        if key in obj:
+            return obj[key]
+        return None
+
+    if 's3' not in config:
+        config['s3'] = {}
+
+    config['s3']['bucket'] = os.getenv('S3_SFTP_SYNC__S3_BUCKET', safe_get(config['s3'], 'bucket'))
+    config['s3']['key_prefix'] = os.getenv('S3_SFTP_SYNC__S3_key_PREFIX', safe_get(config['s3'], 'key_prefix'))
+
+    if 'sftp' not in config:
+        config['sftp'] = {}
+
+    config['sftp']['hostname'] = os.getenv('S3_SFTP_SYNC__SFTP_HOSTNAME', safe_get(config['sftp'], 'hostname'))
+    config['sftp']['username'] = os.getenv('S3_SFTP_SYNC__SFTP_USERNAME', safe_get(config['sftp'], 'username'))
+    config['sftp']['password'] = os.getenv('S3_SFTP_SYNC__SFTP_PASSWORD', safe_get(config['sftp'], 'password'))
+
+    config['incremental_sync']['last_modified_s3_key'] = os.getenv('S3_SFTP_SYNC__SFTP_LAST_MODIFIED_S3_KEY', safe_get(config['incremental_sync'], 'last_modified_s3_key'))
+
+    return config
 
 def file_md5(file):
     hash_md5 = hashlib.md5()
@@ -59,11 +89,11 @@ def main(config_file, logging_config):
     global logger
 
     logger = get_logger(logging_config)
+    config = get_config(config_file)
+
+    print(config)
 
     logger.info('Starting sync')
-
-    with open(config_file) as file:
-        config = yaml.load(file)
 
     num_files_synced = 0
     num_bytes_synced = 0
@@ -89,9 +119,7 @@ def main(config_file, logging_config):
 
     cnopts = pysftp.CnOpts()
     cnopts.compression = True
-
-    if 'verify_host_key' in config['sftp'] and config['sftp']['verify_host_key'] == False:
-        cnopts.hostkeys = None
+    cnopts.hostkeys = None
 
     with pysftp.Connection(config['sftp']['hostname'],
                            username=config['sftp']['username'],
