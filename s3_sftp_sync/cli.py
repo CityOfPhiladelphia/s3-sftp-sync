@@ -55,6 +55,9 @@ def get_config(config_file):
     config['sftp']['username'] = os.getenv('S3_SFTP_SYNC__SFTP_USERNAME', safe_get(config['sftp'], 'username'))
     config['sftp']['password'] = os.getenv('S3_SFTP_SYNC__SFTP_PASSWORD', safe_get(config['sftp'], 'password'))
 
+    if 'incremental_sync' not in config:
+        config['incremental_sync'] = {}
+
     config['incremental_sync']['last_modified_s3_key'] = os.getenv('S3_SFTP_SYNC__SFTP_LAST_MODIFIED_S3_KEY', safe_get(config['incremental_sync'], 'last_modified_s3_key'))
 
     return config
