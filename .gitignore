@@ -94,4 +94,4 @@ envs/
 ._*
 
 # Custom
-config-local.conf
+config-local.yml
