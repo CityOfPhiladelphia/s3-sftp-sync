@@ -1,0 +1,4 @@
+boto3==1.17.3
+click==7.1.2
+PyYAML==5.4.1
+pysftp==0.2.9
