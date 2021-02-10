@@ -86,8 +86,8 @@ def s3_md5(s3, bucket, key):
     return None
 
 @click.command()
-@click.option('--config-file', default='config.conf')
-@click.option('--logging-config', default='logging_config.conf')
+@click.option('--config-file', default='./config.conf')
+@click.option('--logging-config', default='./logging_config.conf')
 def main(config_file, logging_config):
     global logger
 
@@ -102,12 +102,18 @@ def main(config_file, logging_config):
     start_time = None
     last_modified = None
 
-    s3 = boto3.client('s3')
+
+
     bucket = config['s3']['bucket']
     key_prefix = config['s3']['key_prefix']
+    key_id=config['s3']['aws_access_key_id']
+    access_key=config['s3']['aws_secret_access_key']
+
+    s3 = boto3.client('s3', aws_access_key_id=key_id, aws_secret_access_key=access_key)
 
     if 'incremental_sync' in config:
         key = config['incremental_sync']['last_modified_s3_key']
+        print('DEBUG', bucket, key)
         try:
             response = s3.get_object(Bucket=bucket, Key=key)
             start_time = response['Body'].read().decode('utf-8')
@@ -129,14 +135,19 @@ def main(config_file, logging_config):
 
         logger.info('Walking SFTP server structure')
         wtcb = WTCallbacks()
-        sftp.walktree('/', wtcb.file_cb, wtcb.dir_cb, wtcb.unk_cb)
+        # https://pysftp.readthedocs.io/en/release_0.2.8/pysftp.html#pysftp.Connection.walktree
+        # 1st arg is the root of the remote directory to descend the cwd
+        # 2nd arg is fcallback, "callback  function  to  invoke  for  a  regular  file."
+        # 3rd arg is dcallback, "callback  function  to  invoke  for  a  directory."
+        # 4th arg is ucallback, " callback function to invoke for an unknown file type."
+        # 5th arg is a boolean for recursing (default should be true)
+        sftp.walktree('.', wtcb.file_cb, wtcb.dir_cb, wtcb.unk_cb, True)
 
         for fname in wtcb.flist:
             stats = sftp.sftp_client.stat(fname)
 
             mtime = str(stats.st_mtime)
             size = stats.st_size
-
             if start_time == None or mtime >= start_time:
                 with sftp.sftp_client.file(fname) as file:
                     if mtime == start_time:
@@ -148,7 +159,8 @@ def main(config_file, logging_config):
                             file_hash = file_md5(file)
                         else:
                             file_hash = None
-
+                    print("if start_time == None or mtime > start_time or s3_hash != file_hash:")
+                    print("start_time: '{}', mtime: '{}', s3_hash: '{}', file_hash: '{}'".format(start_time, mtime, s3_hash, file_hash))
                     if start_time == None or mtime > start_time or s3_hash != file_hash:
                         logger.info('Syncing {} - {} mtime - {} bytes'.format(fname, mtime, size))
 
