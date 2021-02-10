@@ -24,7 +24,7 @@ def get_logger(logging_config):
         logging.basicConfig(format=FORMAT, level=logging.INFO)
 
     def exception_handler(type, value, tb):
-        logger.exception("Uncaught exception: {}".format(str(value)), exc_info=(type, value, tb))
+        print("Uncaught exception: {}".format(str(value)), exc_info=(type, value, tb))
 
     sys.excepthook = exception_handler
 
@@ -80,21 +80,21 @@ def s3_md5(s3, bucket, key):
         return response['ETag'].strip('"').strip("'")
     except botocore.exceptions.ClientError as e:
         if e.response['Error']['Code'] != '404':
-            logger.exception('Could not fetch S3 object - {}/{}'.format(bucket, key))
+            print('Could not fetch S3 object - {}/{}'.format(bucket, key))
             sys.exit(1)
 
     return None
 
 @click.command()
-@click.option('--config-file', default='config.conf')
-@click.option('--logging-config', default='logging_config.conf')
+@click.option('--config-file', default='./config.conf')
+@click.option('--logging-config', default='./logging_config.conf')
 def main(config_file, logging_config):
     global logger
 
     logger = get_logger(logging_config)
     config = get_config(config_file)
 
-    logger.info('Starting sync')
+    print('Starting sync')
 
     num_files_synced = 0
     num_bytes_synced = 0
@@ -102,20 +102,26 @@ def main(config_file, logging_config):
     start_time = None
     last_modified = None
 
-    s3 = boto3.client('s3')
+
+
     bucket = config['s3']['bucket']
     key_prefix = config['s3']['key_prefix']
+    key_id=config['s3']['aws_access_key_id']
+    access_key=config['s3']['aws_secret_access_key']
+
+    s3 = boto3.client('s3', aws_access_key_id=key_id, aws_secret_access_key=access_key)
 
     if 'incremental_sync' in config:
         key = config['incremental_sync']['last_modified_s3_key']
+        print('DEBUG', bucket, key)
         try:
             response = s3.get_object(Bucket=bucket, Key=key)
             start_time = response['Body'].read().decode('utf-8')
             last_modified = start_time
-            logger.info('Using incremental sync with start_time of {} from {}/{}'.format(start_time, bucket, key))
+            print('Using incremental sync with start_time of {} from {}/{}'.format(start_time, bucket, key))
         except botocore.exceptions.ClientError as e:
             if e.response['Error']['Code'] != 'NoSuchKey':
-                logger.exception('Could not fetch last modified time S3 object - {}/{}'.format(bucket, key))
+                print('Could not fetch last modified time S3 object - {}/{}'.format(bucket, key))
                 sys.exit(1)
 
     cnopts = pysftp.CnOpts()
@@ -127,16 +133,21 @@ def main(config_file, logging_config):
                            password=config['sftp']['password'],
                            cnopts=cnopts) as sftp:
 
-        logger.info('Walking SFTP server structure')
+        print('Walking SFTP server structure')
         wtcb = WTCallbacks()
-        sftp.walktree('/', wtcb.file_cb, wtcb.dir_cb, wtcb.unk_cb)
+        # https://pysftp.readthedocs.io/en/release_0.2.8/pysftp.html#pysftp.Connection.walktree
+        # 1st arg is the root of the remote directory to descend the cwd
+        # 2nd arg is fcallback, "callback  function  to  invoke  for  a  regular  file."
+        # 3rd arg is dcallback, "callback  function  to  invoke  for  a  directory."
+        # 4th arg is ucallback, " callback function to invoke for an unknown file type."
+        # 5th arg is a boolean for recursing (default should be true)
+        sftp.walktree('.', wtcb.file_cb, wtcb.dir_cb, wtcb.unk_cb, True)
 
         for fname in wtcb.flist:
             stats = sftp.sftp_client.stat(fname)
 
             mtime = str(stats.st_mtime)
             size = stats.st_size
-
             if start_time == None or mtime >= start_time:
                 with sftp.sftp_client.file(fname) as file:
                     if mtime == start_time:
@@ -144,13 +155,14 @@ def main(config_file, logging_config):
 
                         # if s3 object doesn't exist, don't bother hashing sftp file
                         if s3_hash != None:
-                            logger.info('{} modified time equals start_time, hash checking file'.format(fname))
+                            print('{} modified time equals start_time, hash checking file'.format(fname))
                             file_hash = file_md5(file)
                         else:
                             file_hash = None
-
+                    print("if start_time == None or mtime > start_time or s3_hash != file_hash:")
+                    print("start_time: '{}', mtime: '{}', s3_hash: '{}', file_hash: '{}'".format(start_time, mtime, s3_hash, file_hash))
                     if start_time == None or mtime > start_time or s3_hash != file_hash:
-                        logger.info('Syncing {} - {} mtime - {} bytes'.format(fname, mtime, size))
+                        print('Syncing {} - {} mtime - {} bytes'.format(fname, mtime, size))
 
                         s3.put_object(
                             Bucket=bucket,
@@ -168,10 +180,10 @@ def main(config_file, logging_config):
                 last_modified = mtime
 
         if 'incremental_sync' in config and last_modified != None and last_modified != start_time:
-            logger.info('Updating last_modified time {}'.format(last_modified))
+            print('Updating last_modified time {}'.format(last_modified))
             s3.put_object(
                 Bucket=bucket,
                 Key=config['incremental_sync']['last_modified_s3_key'],
                 Body=str(last_modified).encode('utf8'))
 
-        logger.info('Synced {} files and {} bytes'.format(num_files_synced, num_bytes_synced))
+        print('Synced {} files and {} bytes'.format(num_files_synced, num_bytes_synced))
