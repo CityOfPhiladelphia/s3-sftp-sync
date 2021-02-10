@@ -113,7 +113,6 @@ def main(config_file, logging_config):
 
     if 'incremental_sync' in config:
         key = config['incremental_sync']['last_modified_s3_key']
-        print('DEBUG', bucket, key)
         try:
             response = s3.get_object(Bucket=bucket, Key=key)
             start_time = response['Body'].read().decode('utf-8')
@@ -159,8 +158,6 @@ def main(config_file, logging_config):
                             file_hash = file_md5(file)
                         else:
                             file_hash = None
-                    print("if start_time == None or mtime > start_time or s3_hash != file_hash:")
-                    print("start_time: '{}', mtime: '{}', s3_hash: '{}', file_hash: '{}'".format(start_time, mtime, s3_hash, file_hash))
                     if start_time == None or mtime > start_time or s3_hash != file_hash:
                         print('Syncing {} - {} mtime - {} bytes'.format(fname, mtime, size))
 
