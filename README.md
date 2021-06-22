@@ -2,28 +2,34 @@
 
 Syncs files from a SFTP server to an S3 bucket.
 
-### Install:
 
+## Docker
+
+Create a logging_config.conf file and set the parammeters 
+You can rename config.yml 
+
+### Build: 
 ```sh
-pip install git+https://github.com/CityOfPhiladelphia/s3-sftp-sync.git
+docker build -t s3_sftp_sync .
 ```
+## How to use
 
 ### Usage:
 
 ```sh
-s3_sftp_sync
+docker run s3_sftp_sync:latest
 ```
 
 ```sh
-s3_sftp_sync --config-file /path/to/config.conf
+docker run s3_sftp_sync:latest --config-file logging_config.conf
 ```
 
 ```sh
-s3_sftp_sync --logging-file /path/to/logging_config.conf
+docker run s3_sftp_sync:latest --logging-file /path/to/logging_config.conf
 ```
 
 ```sh
-s3_sftp_sync --config-file /path/to/config.conf --logging-file /path/to/logging_config.conf
+docker run s3_sftp_sync:latest --config-file /path/to/config.conf --logging-file /path/to/logging_config.conf
 ```
 
 ### Configuration File
