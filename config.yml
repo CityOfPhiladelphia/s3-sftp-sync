@@ -1,14 +1,12 @@
 sftp:
-  hostname: secure-ftp.phila.gov ## SFTP server host or IP
-  username: Opaproperty ## SFTP username
-  password: foo ## SFTP password
+  hostname: <sfpt-hostname> ## SFTP server host or IP
+  username: <sfpt-username> ## SFTP username
+  password: <sfpt-password> ## SFTP password
   verify_host_key: false ## Wether to verify the SFTP host, set to true if possible
 
 s3:
-  bucket: some-bucket ## bucket to place SFTP data
-  key_prefix: some-key ## key prefix for S3 destination files eg /sftp/original/file/path
-  aws_access_key_id: SOMEKEYID ## an AWS access key ID. Omit of you would like to use insstance role or ~/.aws
-  aws_secret_access_key: SOMEKEY ## an AWS access key secret. Omit of you would like to use insstance role or ~/.aws
+  bucket: <s3-bucket> ## bucket to place SFTP data
+  key_prefix: <s3-key> ## key prefix for S3 destination files eg /sftp/original/file/path
 
 ## remove this section to use full sync
 incremental_sync:
