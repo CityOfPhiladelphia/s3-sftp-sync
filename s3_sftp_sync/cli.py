@@ -19,22 +19,20 @@ def get_logger(logging_config):
         with open(logging_config) as file:
             config = yaml.load(file)
         dictConfig(config)
-    except:
+    except Exception as e:
         FORMAT = '[%(asctime)-15s] %(levelname)s [%(name)s] %(message)s'
         logging.basicConfig(format=FORMAT, level=logging.INFO)
-
-    def exception_handler(type, value, tb):
-        print("Uncaught exception: {}".format(str(value)), exc_info=(type, value, tb))
-
-    sys.excepthook = exception_handler
+        #logging.error(str(e))
 
     return logging.getLogger('s3_sftp_sync')
 
 def get_config(config_file):
+    print(f'trying to open {config_file}')
     try:
         with open(config_file) as file:
-            config = yaml.load(file)
-    except:
+            config = yaml.safe_load(file)
+    except Exception as e:
+        print(f'Couldnt load config file. Error: {str(e)}')
         config = {}
 
     def safe_get(obj, key):
@@ -91,9 +89,12 @@ def s3_md5(s3, bucket, key):
 def main(config_file, logging_config):
     global logger
 
+
     logger = get_logger(logging_config)
     config = get_config(config_file)
 
+    print(config_file)
+    print(config)
     print('Starting sync')
 
     num_files_synced = 0
