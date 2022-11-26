@@ -107,10 +107,8 @@ def main(config_file, logging_config):
 
     bucket = config['s3']['bucket']
     key_prefix = config['s3']['key_prefix']
-    key_id=config['s3']['aws_access_key_id']
-    access_key=config['s3']['aws_secret_access_key']
 
-    s3 = boto3.client('s3', aws_access_key_id=key_id, aws_secret_access_key=access_key)
+    s3 = boto3.client('s3')
 
     if 'incremental_sync' in config:
         key = config['incremental_sync']['last_modified_s3_key']
