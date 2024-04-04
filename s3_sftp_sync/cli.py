@@ -93,8 +93,6 @@ def main(config_file, logging_config):
     logger = get_logger(logging_config)
     config = get_config(config_file)
 
-    print(config_file)
-    print(config)
     print('Starting sync')
 
     num_files_synced = 0
