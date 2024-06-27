@@ -1,0 +1,21 @@
+[build-system]
+requires = ["setuptools>=61", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "s3-sftp-sync"
+version = "0.3dev"
+description = "Syncs files from a SFTP server to an S3 bucket"
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = ["pyyaml",
+                "click",
+                "paramiko",
+                "boto3",
+                "botocore"]
+
+[project.scripts]
+s3_sftp_sync = "s3_sftp_sync.cli:main"
+
+[tool.setuptools.packages.find]
+include = ["s3_sftp_sync"]
